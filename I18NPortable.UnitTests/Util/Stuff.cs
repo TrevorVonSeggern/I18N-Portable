@@ -64,5 +64,9 @@ namespace I18NPortable.UnitTests.Util
         public List<Tuple<TEnum, string>> TranslateEnumToTupleList<TEnum>() => throw new NotImplementedException();
 
         public void Unload() => throw new NotImplementedException();
+
+        public II18N LoadProvider(ILocaleProvider provider) => this;
+
+        public II18N Init(ILocaleProvider localeProvider) => this;
     }
 }

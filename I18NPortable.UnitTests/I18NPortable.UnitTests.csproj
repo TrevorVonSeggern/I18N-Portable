@@ -39,6 +39,7 @@
     <Compile Include="BindingTests.cs" />
     <Compile Include="CultureTests.cs" />
     <Compile Include="ExtensionTests.cs" />
+    <Compile Include="I18NAddProviderTest.cs" />
     <Compile Include="I18NTests.cs" />
     <Compile Include="AddLocaleReaderTests.cs" />
     <Compile Include="LocaleLoadingTests.cs" />

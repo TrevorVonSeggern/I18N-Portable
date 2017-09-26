@@ -144,25 +144,25 @@ namespace I18NPortable
 
         public II18N AddLocaleReader(ILocaleReader reader, string extension)
         {
-            if(reader == null)
+            if (reader == null)
                 throw new I18NException(ErrorMessages.ReaderNull);
 
-            if(string.IsNullOrEmpty(extension))
+            if (string.IsNullOrEmpty(extension))
                 throw new I18NException(ErrorMessages.ReaderExtensionNeeded);
 
-            if(!extension.StartsWith("."))
+            if (!extension.StartsWith("."))
                 throw new I18NException(ErrorMessages.ReaderExtensionStartWithDot);
 
-            if(extension.Length < 2)
+            if (extension.Length < 2)
                 throw new I18NException(ErrorMessages.ReaderExtensionOneChar);
 
-            if(extension.Split('.').Length - 1 > 1)
+            if (extension.Split('.').Length - 1 > 1)
                 throw new I18NException(ErrorMessages.ReaderExtensionJustOneDot);
 
-            if(_readers.Any(x => x.Item2.Equals(extension)))
+            if (_readers.Any(x => x.Item2.Equals(extension)))
                 throw new I18NException(ErrorMessages.ReaderExtensionTwice);
 
-            if(_readers.Any(x => x.Item1 == reader))
+            if (_readers.Any(x => x.Item1 == reader))
                 throw new I18NException(ErrorMessages.ReaderTwice);
 
             _readers.Add(new Tuple<ILocaleReader, string>(reader, extension));
@@ -232,10 +232,65 @@ namespace I18NPortable
 
             return this;
         }
+        public II18N Init(ILocaleProvider localeProvider)
+        {
+            if (_readers.FirstOrDefault(x => x.Item1 is TextKvpReader && x.Item2 == ".txt") == null)
+            {
+                _readers.Insert(0, new Tuple<ILocaleReader, string>(new TextKvpReader(), ".txt"));
+            }
+
+            var knownFileExtensions = _readers.Select(x => x.Item2);
+
+            foreach (var provider in _providers)
+            {
+                provider.Dispose();
+            }
+
+            _providers.Clear(); // temporal until other providers are implemented
+
+            _providers.Add(localeProvider.SetLogger(Log).Init());
+
+            var localeTuples = _providers.First().GetAvailableLocales().ToList();
+            _locales = localeTuples.Select(x => x.Item1).ToList();
+            _localeFileExtensionMap = localeTuples.ToDictionary(x => x.Item1, x => x.Item2);
+
+            var localeToLoad = GetDefaultLocale();
+
+            if (string.IsNullOrEmpty(localeToLoad))
+            {
+                if (!string.IsNullOrEmpty(_fallbackLocale) && _locales.Contains(_fallbackLocale))
+                {
+                    localeToLoad = _fallbackLocale;
+                    Log($"Loading fallback locale: {_fallbackLocale}");
+                }
+                else
+                {
+                    localeToLoad = _locales.ElementAt(0);
+                    Log($"Loading first locale on the list: {localeToLoad}");
+                }
+            }
+            else
+            {
+                Log($"Default locale from current culture: {localeToLoad}");
+            }
+
+            LoadLocale(localeToLoad);
+
+            NotifyPropertyChanged(nameof(Locale));
+            NotifyPropertyChanged(nameof(Language));
+
+            return this;
+        }
 
         #endregion
 
         #region Load stuff
+
+        public II18N LoadProvider(ILocaleProvider provider)
+        {
+            _providers.Add(provider);
+            return this;
+        }
 
         private void LoadLocale(string locale)
         {
@@ -259,7 +314,7 @@ namespace I18NPortable
                 var message = $"{ErrorMessages.ReaderException}.\nReader: {reader.GetType().Name}.\nLocale: {locale}{extension}";
                 throw new I18NException(message, e);
             }
-            
+
             LogTranslations();
 
             _locale = locale;
@@ -310,7 +365,7 @@ namespace I18NPortable
             foreach (var value in Enum.GetValues(type))
             {
                 var name = Enum.GetName(type, value);
-                dic.Add((TEnum) value, Translate($"{type.Name}.{name}"));
+                dic.Add((TEnum)value, Translate($"{type.Name}.{name}"));
             }
 
             return dic;
@@ -343,7 +398,7 @@ namespace I18NPortable
             foreach (var value in Enum.GetValues(type))
             {
                 var name = Enum.GetName(type, value);
-                var tuple = new Tuple<TEnum, string>((TEnum) value, Translate($"{type.Name}.{name}"));
+                var tuple = new Tuple<TEnum, string>((TEnum)value, Translate($"{type.Name}.{name}"));
                 list.Add(tuple);
             }
 
@@ -371,7 +426,7 @@ namespace I18NPortable
 
             return matchingLocale;
 
-                // ISO 639-1 two-letter code. i.e: "es"
+            // ISO 639-1 two-letter code. i.e: "es"
             // || x.Key.Equals(threeLetterIsoName) // ISO 639-2 three-letter code. i.e: "spa"
             // || x.Key.Equals(threeLetterWindowsName)); // "ESP"
         }
